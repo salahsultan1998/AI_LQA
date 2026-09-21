@@ -1,0 +1,6 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Sensitive configuration / environment variables
+.env
