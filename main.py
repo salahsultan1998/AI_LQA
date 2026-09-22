@@ -81,7 +81,8 @@ async def evaluate_row(
                 raw_response = await _complete_once(settings, prompt, current_model)
                 result = json.loads(raw_response)
                 
-                item["ai_status"] = result.get("result", "未知")
+                item["ai_status"] = result.get("issue", "")
+                item["ai_severity"] = result.get("severity","")
                 item["ai_feedback"] = result.get("reason", "")
                 item["ai_suggestion"] = result.get("suggestion", "")
                 
@@ -93,6 +94,7 @@ async def evaluate_row(
                     await asyncio.sleep(2 ** attempt)
                 else:
                     item["ai_status"] = "系统错误"
+                    item["ai_severity"] = "系统错误"
                     item["ai_feedback"] = f"重试 {settings.max_retries} 次后失败。最后使用的模型: {current_model}。错误: {str(e)}"
                     item["ai_suggestion"] = ""
                     
@@ -229,7 +231,7 @@ def run_lqa(
 
     # Step 4: Write output back to openpyxl sheet (overwrite if exists, append if new)
     headers = [cell.value for cell in ws[1]]
-    output_cols = ["校对结果", "原因", "建议翻译"]
+    output_cols = ["严重级别","错误类型", "原因", "建议翻译"]
     col_indices = {}
 
     for col_name in output_cols:
@@ -243,7 +245,7 @@ def run_lqa(
 
     # --- Formatting Setup ---
     # 1. Set column widths
-    widths = {"校对结果": 18, "原因": 45, "建议翻译": 35}
+    widths = {"严重级别":10,"错误类型": 18, "原因": 45, "建议翻译": 35}
     for col_name, col_idx in col_indices.items():
         col_letter = get_column_letter(col_idx)
         ws.column_dimensions[col_letter].width = widths.get(col_name, 20)
@@ -255,7 +257,10 @@ def run_lqa(
     for item in processed_items:
         r = item["row"]
         
-        cell_status = ws.cell(row=r, column=col_indices["校对结果"], value=item.get("ai_status"))
+        cell_status = ws.cell(row=r, column=col_indices["严重级别"], value=item.get("ai_severity"))
+        cell_status.alignment = wrap_align
+
+        cell_status = ws.cell(row=r, column=col_indices["错误类型"], value=item.get("ai_status"))
         cell_status.alignment = wrap_align
         
         cell_feedback = ws.cell(row=r, column=col_indices["原因"], value=item.get("ai_feedback"))
